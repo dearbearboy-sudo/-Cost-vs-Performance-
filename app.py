@@ -134,18 +134,21 @@ DATABASE = [
 
 df_db = pd.DataFrame(DATABASE)
 
-with st.expander("🔍 ตรวจสอบฐานข้อมูลฟิล์มอ้างอิง (Database Lookup)"):
-    st.dataframe(df_db[df_db["film_name"] != "กำหนดเอง (Custom Material)"])
+with st.expander("🔍 ตรวจสอบฐานข้อมูลฟิล์มและราคาอ้างอิง (Database Lookup)"):
+    # ปรับตารางหน้าเว็บให้โชว์ราคา บาท/กก. ที่ดึงมาคำนวณด้วย
+    show_df = df_db[df_db["film_name"] != "กำหนดเอง (Custom Material)"].copy()
+    show_df.columns = ["หมวดหมู่", "ชื่อฟิล์ม", "ความหนาอ้างอิง (µm)", "Ref OTR", "Ref WVTR", "Density (g/cm³)", "ราคาอ้างอิง (บาท/กก.)", "หน่วย OTR", "หน่วย WVTR"]
+    st.dataframe(show_df)
 
 st.write("---")
 
-st.header("🛠️ ออกแบบโครงสร้างชั้นฟิล์มและระบุราคา (Laminate Structure & Cost Design)")
+st.header("🛠️ ออกแบบโครงสร้างชั้นฟิล์ม (Laminate Structure Design)")
 num_layers = st.number_input("ระบุจำนวนชั้นฟิล์ม (Number of Layers)", min_value=1, max_value=10, value=3, step=1)
 
 layers_data = []
 total_film_cost = 0.0
 
-# ส่วนที่ 1: รับค่าข้อมูลฟิล์มแต่ละชั้น
+# ส่วนที่ 1: คำนวณคุณสมบัติและราคาฟิล์มแต่ละชั้นแบบอัตโนมัติ
 for i in range(int(num_layers)):
     st.subheader(f"🎞️ ชั้นที่ {i+1} (Layer {i+1})")
     col1, col2, col3, col4 = st.columns([2, 1, 1, 2])
@@ -159,59 +162,66 @@ for i in range(int(num_layers)):
         actual_thickness = st.number_input(f"ความหนาจริง (µm)", min_value=0.1, value=float(mat_info["ref_thickness_microns"]), key=f"thick_{i}")
 
     with col3:
-        # ช่องกรอกราคาค่าฟิล์มของชั้นนั้น ๆ โดยตรง
-        film_cost_m2 = st.number_input(f"ราคาฟิล์มชั้นที่ {i+1} (บาท/m²)", min_value=0.0, value=15.0, step=1.0, key=f"cost_{i}")
-        total_film_cost += film_cost_m2
+        manual_toggle = st.toggle("ปรับค่าฟิล์มเอง", value=(selected_material == "กำหนดเอง (Custom Material)"), key=f"toggle_{i}")
 
     with col4:
-        manual_toggle = st.toggle("ปรับค่า Barrier เอง", value=(selected_material == "กำหนดเอง (Custom Material)"), key=f"toggle_{i}")
         if manual_toggle:
             ref_otr = st.number_input(f"OTR เอง", min_value=0.0, value=float(mat_info["ref_otr"]), key=f"otr_{i}")
             ref_wvtr = st.number_input(f"WVTR เอง", min_value=0.0, value=float(mat_info["ref_wvtr"]), key=f"wvtr_{i}")
+            density = st.number_input(f"Density เอง (g/cm³)", min_value=0.5, value=float(mat_info["density"]), key=f"dens_{i}")
+            price_per_kg = st.number_input(f"ราคาเอง (บาท/กก.)", min_value=0.0, value=float(mat_info["price_per_kg"]), key=f"price_{i}")
             ref_thick = 25.0
         else:
             ref_otr = mat_info["ref_otr"]
             ref_wvtr = mat_info["ref_wvtr"]
             ref_thick = mat_info["ref_thickness_microns"]
-            st.write(f"📉 OTR: {ref_otr} / WVTR: {ref_wvtr}")
+            density = mat_info["density"]
+            price_per_kg = mat_info["price_per_kg"]
+            st.write(f"📊 ระบบดึงค่า: {price_per_kg} บาท/กก. (Density: {density})")
 
+    # ป้องกันการหารด้วยศูนย์
     ref_otr = max(ref_otr, 0.00001)
     ref_wvtr = max(ref_wvtr, 0.00001)
 
+    # 1. คำนวณ Barrier ของชั้นนี้ตามความหนาจริง
     actual_otr_layer = ref_otr * (ref_thick / actual_thickness)
     actual_wvtr_layer = ref_wvtr * (ref_thick / actual_thickness)
+    
+    # 2. คำนวณราคาฟิล์มต่อตารางเมตรโดยอัตโนมัติ (น้ำหนักฟิล์มต่อ m² = หนา x ความหนาแน่น)
+    weight_per_m2 = actual_thickness * density  # หน่วย: กรัม/m²
+    film_cost_m2 = (weight_per_m2 / 1000) * price_per_kg  # แปลงกรัมเป็นกิโลกรัม แล้วคูณราคาต่อกก.
+    total_film_cost += film_cost_m2
 
     layers_data.append({
         "layer_order": i + 1,
         "material": selected_material,
         "thickness": actual_thickness,
         "otr_layer": actual_otr_layer,
-        "wvtr_layer": actual_wvtr_layer
+        "wvtr_layer": actual_wvtr_layer,
+        "cost_m2": film_cost_m2  # เก็บข้อมูลต้นทุนอัตโนมัติรายชั้น
     })
 
 st.write("---")
 
-# ส่วนที่ 2: ปรับแต่งปริมาณกาวลามิเนต (เฉพาะกรณีที่มีตั้งแต่ 2 ชั้นขึ้นไป)
+# ส่วนที่ 2: ปรับแต่งปริมาณกาวลามิเนต (แปรผันตาม Coat Weight)
 total_adhesive_cost = 0.0
 if num_layers > 1:
     st.header("🧪 ปรับแต่งปริมาณกาวลามิเนต (Adhesive Layer Specification)")
-    st.info("💡 ราคาคิดจากสูตร: 0.122 บาท/g × Coat Weight (g/m²)")
+    st.info("💡 ราคาคิดอัตโนมัติจากสูตร: 0.122 บาท/g × Coat Weight (g/m²)")
     
-    # จำนวนชั้นกาวจะเท่ากับ จำนวนชั้นฟิล์ม - 1
     num_adhesives = int(num_layers - 1)
     col_adh = st.columns(num_adhesives)
     
     for j in range(num_adhesives):
         with col_adh[j]:
             coat_wt = st.number_input(f"Coat Wt. กาวรอยต่อที่ {j+1} (g/m²)", min_value=0.0, value=3.0, step=0.5, key=f"coat_{j}")
-            # คำนวณราคากาวของชั้นนั้น ๆ
             adh_cost = 0.122 * coat_wt
             total_adhesive_cost += adh_cost
             st.caption(f"💰 ค่ากาวชั้นนี้: {adh_cost:.3f} บาท/m²")
 
 st.write("---")
 
-# ส่วนที่ 3: แดชบอร์ดแสดงผลรวม (ถอดปริมาณการผลิตและงบประมาณโปรเจกต์ออกแล้ว)
+# ส่วนที่ 3: แดชบอร์ดสรุปผลรวม (แสดงต้นทุนรวมที่เกิดจาก ฟิล์มรวม + กาวรวม)
 st.header("📊 แดชบอร์ดสรุปผลคุณสมบัติและราคา (Output Dashboard)")
 
 total_thickness = sum(layer["thickness"] for layer in layers_data)
@@ -231,14 +241,16 @@ with col_m2:
 with col_m3:
     st.metric(label="💧 ค่าทำนาย WVTR (ASTM F1249)", value=f"{predicted_wvtr:.4f} g/m².day")
 
-# ตารางแจกแจงโครงสร้างภายใน
+# ตารางแจกแจงโครงสร้างภายใน (ซ่อนต้นทุนรายชั้นในตารางตามบรีฟเดิม เน้นแสดงเฉพาะข้อมูลโครงสร้าง)
 st.subheader("📋 ตารางแจกแจงคุณสมบัติรายชั้น (Layer Analysis Table)")
 summary_df = pd.DataFrame(layers_data)
-summary_df.columns = ["ลำดับชั้น (Layer)", "วัสดุที่เลือก (Material)", "ความหนาจริง (microns)", "OTR ชั้นนี้ (cc/m².day)", "WVTR ชั้นนี้ (g/m².day)"]
-st.dataframe(summary_df.style.format({
+# ดึงคอลัมน์ออกไปแสดงผลเฉพาะข้อมูลโครงสร้าง ไม่โชว์ราคารายชั้นในตารางสรุปตามต้องการ
+table_df = summary_df[["layer_order", "material", "thickness", "otr_layer", "wvtr_layer"]].copy()
+table_df.columns = ["ลำดับชั้น (Layer)", "วัสดุที่เลือก (Material)", "ความหนาจริง (microns)", "OTR ชั้นนี้ (cc/m².day)", "WVTR ชั้นนี้ (g/m².day)"]
+st.dataframe(table_df.style.format({
     "ความหนาจริง (microns)": "{:.2f}",
     "OTR ชั้นนี้ (cc/m².day)": "{:.4f}",
     "WVTR ชั้นนี้ (g/m².day)": "{:.4f}"
 }))
 
-st.info("💡 สูตรคำนวณต้นทุน: Total Cost = Sum(Film Cost 1..N) + Sum(Adhesive Cost 1..N-1)")
+st.info("💡 คำชี้แจงคำนวณอัตโนมัติ: ระบบคำนวณต้นทุนฟิล์มแต่ละชั้นให้เองจาก [ความหนา × Density × ราคาต่อกิโลกรัมในฐานข้อมูล] แล้วนำมาบวกกับค่ากาวลามิเนต")

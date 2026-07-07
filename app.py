@@ -219,7 +219,7 @@ with col_m1:
     st.metric(label="💵 ประมาณการราคาต่อตารางเมตร", value=f"{total_cost_m2:.2f} บาท/m²")
 with col_m2:
     st.metric(label="🌬️ ค่าทำนาย OTR (ASTM D3985)", value=f"{predicted_otr:.4f} cc/m².day")
-    st.metric(label="📈 ต้นทุนรวมตามปริมาณผลิต", value=f"{total_project_budget:,.2f} บาท")
+    
 with col_m3:
     st.metric(label="💧 ค่าทำนาย WVTR (ASTM F1249)", value=f"{predicted_wvtr:.4f} g/m².day")
 
@@ -231,5 +231,5 @@ st.dataframe(summary_df.style.format({
     "ความหนาจริง (µm)": "{:.2f}",
     "OTR ชั้นนี้": "{:.4f}",
     "WVTR ชั้นนี้": "{:.4f}",
-    "ต้นทุนชั้นนี้ (บาท/m²)": "{:.2f}"
+    
 }))

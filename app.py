@@ -40,8 +40,9 @@ DATABASE = [
         "density": 0.935,
         "price_per_kg": 253.75,
         "unit_otr": "cc/m2.day",
-        "unit_wvtr": "g/m2.day
-    {
+        "unit_wvtr": "g/m2.day"
+    },
+       {
         "material_category": "Non-metalized film (EVOH)",
         "film_name": "LL-EVOH",
         "ref_thickness_microns": 70.0,

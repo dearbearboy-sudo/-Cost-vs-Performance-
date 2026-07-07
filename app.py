@@ -134,7 +134,7 @@ DATABASE = [
 
 df_db = pd.DataFrame(DATABASE)
 
-with st.expander("🔍 ตรวจสอบฐานข้อมูลฟิล์มและราคาอ้างอิง"):
+with st.expander("🔍 ตรวจสอบฐานข้อมูลฟิล์มอ้างอิง (Database Lookup)"):
     st.dataframe(df_db[df_db["film_name"] != "กำหนดเอง (Custom Material)"])
 
 st.write("---")
@@ -163,73 +163,78 @@ for i in range(int(num_layers)):
         if manual_toggle:
             ref_otr = st.number_input(f"OTR เอง", min_value=0.0, value=float(mat_info["ref_otr"]), key=f"otr_{i}")
             ref_wvtr = st.number_input(f"WVTR เอง", min_value=0.0, value=float(mat_info["ref_wvtr"]), key=f"wvtr_{i}")
-            density = st.number_input(f"ความหนาแน่น (g/cm³)", min_value=0.5, value=float(mat_info["density"]), key=f"dens_{i}")
-            price_per_kg = st.number_input(f"ราคา (บาท/กก.)", min_value=0.0, value=float(mat_info["price_per_kg"]), key=f"price_{i}")
             ref_thick = 25.0
         else:
             ref_otr = mat_info["ref_otr"]
             ref_wvtr = mat_info["ref_wvtr"]
             ref_thick = mat_info["ref_thickness_microns"]
-            density = mat_info["density"]
-            price_per_kg = mat_info["price_per_kg"]
-            st.write(f"💰 ราคา: {price_per_kg} บ./กก. (Density: {density})")
+            st.write(f"📉 OTR อ้างอิง: {ref_otr} / WVTR อ้างอิง: {ref_wvtr}")
 
-    # ป้องกันคำนวณผิดพลาด
+    # ป้องกันคำนวณหารศูนย์
     ref_otr = max(ref_otr, 0.00001)
     ref_wvtr = max(ref_wvtr, 0.00001)
 
-    # คำนวณ Barrier รายชั้น
+    # คำนวณ Barrier ปรับตามความหนาจริงรายชั้น
     actual_otr_layer = ref_otr * (ref_thick / actual_thickness)
     actual_wvtr_layer = ref_wvtr * (ref_thick / actual_thickness)
-    
-    # 💥 สูตรคำนวณราคาต่อตารางเมตร
-    weight_per_m2 = actual_thickness * density  # กรัม ต่อ ตารางเมตร
-    cost_per_m2 = (weight_per_m2 / 1000) * price_per_kg
 
     layers_data.append({
         "layer_order": i + 1,
         "material": selected_material,
         "thickness": actual_thickness,
         "otr_layer": actual_otr_layer,
-        "wvtr_layer": actual_wvtr_layer,
-        "cost_m2": cost_per_m2
+        "wvtr_layer": actual_wvtr_layer
     })
 
 st.write("---")
 
-# 📊 แดชบอร์ดแสดงผลรวม
+# 📊 ส่วนการคำนวณราคาแบบเหมาโครงสร้าง (Total Cost = Total Film Cost + Adhesive Cost)
+st.header("💰 ข้อมูลต้นทุนและการสั่งผลิต (Cost Input)")
+col_c1, col_c2, col_c3 = st.columns(3)
+
+with col_c1:
+    total_film_cost_m2 = st.number_input("ราคาค่าฟิล์มรวมทั้งหมด (บาท/m²)", min_value=0.0, value=45.0, step=1.0)
+with col_c2:
+    adhesive_cost_m2 = st.number_input("ราคาค่ากาวลามิเนต (บาท/m²)", min_value=0.0, value=5.0, step=0.5)
+with col_c3:
+    production_area = st.number_input("ปริมาณการผลิต (ตารางเมตร)", min_value=1, value=1000, step=500)
+
+# คำนวณตามโมเดล: Total Cost = Cost Film + Cost Adhesive
+total_cost_per_m2 = total_film_cost_m2 + adhesive_cost_m2
+total_project_budget = total_cost_per_m2 * production_area
+
+st.write("---")
+
+# 📊 แดชบอร์ดแสดงผลลัพธ์
 st.header("📊 แดชบอร์ดสรุปผลคุณสมบัติและราคา (Output Dashboard)")
 
 total_thickness = sum(layer["thickness"] for layer in layers_data)
-total_cost_m2 = sum(layer["cost_m2"] for layer in layers_data)
 
+# คำนวณรวมฟิล์มทุกลามิเนตด้วยสูตรอนุกรม (Series Resistance Model)
 inv_otr_total = sum(1 / layer["otr_layer"] for layer in layers_data)
 inv_wvtr_total = sum(1 / layer["wvtr_layer"] for layer in layers_data)
 predicted_otr = 1 / inv_otr_total
 predicted_wvtr = 1 / inv_wvtr_total
 
-# ส่วนการคำนวณราคาเพิ่มเติมตามจำนวนจำหน่าย
-st.subheader("💵คำนวณงบประมาณตามปริมาณการผลิต")
-production_area = st.number_input("ระบุพื้นที่ฟิล์มที่ต้องการใช้ผลิต (ตารางเมตร)", min_value=1, value=1000, step=500)
-total_project_budget = total_cost_m2 * production_area
-
+# ส่วนแสดงผล Metrics หลักบนหน้าเว็บ
 col_m1, col_m2, col_m3 = st.columns(3)
 with col_m1:
     st.metric(label="📏 ความหนารวมลามิเนต", value=f"{total_thickness:.2f} µm")
-    st.metric(label="💵 ประมาณการราคาต่อตารางเมตร", value=f"{total_cost_m2:.2f} บาท/m²")
+    st.metric(label="💵 ต้นทุนโครงสร้างรวม (Total Cost)", value=f"{total_cost_per_m2:.2f} บาท/m²")
 with col_m2:
     st.metric(label="🌬️ ค่าทำนาย OTR (ASTM D3985)", value=f"{predicted_otr:.4f} cc/m².day")
-    
+    st.metric(label="📈 งบประมาณรวมทั้งโปรเจกต์", value=f"{total_project_budget:,.2f} บาท")
 with col_m3:
     st.metric(label="💧 ค่าทำนาย WVTR (ASTM F1249)", value=f"{predicted_wvtr:.4f} g/m².day")
 
-# ตารางแยกรายละเอียดราคารายชั้น
-st.subheader("📋 ตารางแจกแจงคุณสมบัติและราคารายชั้น")
+# ตารางสรุปคุณสมบัติแบบไม่มีราคารายชั้นมากวนใจ
+st.subheader("📋 ตารางแจกแจงคุณสมบัติรายชั้น (Layer Analysis Table)")
 summary_df = pd.DataFrame(layers_data)
-summary_df.columns = ["ลำดับชั้น", "วัสดุ", "ความหนาจริง (µm)", "OTR ชั้นนี้", "WVTR ชั้นนี้"]
+summary_df.columns = ["ลำดับชั้น (Layer)", "วัสดุที่เลือก (Material)", "ความหนาจริง (microns)", "OTR ชั้นนี้ (cc/m².day)", "WVTR ชั้นนี้ (g/m².day)"]
 st.dataframe(summary_df.style.format({
-    "ความหนาจริง (µm)": "{:.2f}",
-    "OTR ชั้นนี้": "{:.4f}",
-    "WVTR ชั้นนี้": "{:.4f}",
-    
+    "ความหนาจริง (microns)": "{:.2f}",
+    "OTR ชั้นนี้ (cc/m².day)": "{:.4f}",
+    "WVTR ชั้นนี้ (g/m².day)": "{:.4f}"
 }))
+
+st.info("💡 หมายเหตุ: ต้นทุนรวมคำนวณจากสูตร [ราคาค่าฟิล์มรวม + ราคาค่ากาว] ต่อตารางเมตร")

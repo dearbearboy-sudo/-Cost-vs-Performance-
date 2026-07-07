@@ -226,7 +226,7 @@ with col_m3:
 # ตารางแยกรายละเอียดราคารายชั้น
 st.subheader("📋 ตารางแจกแจงคุณสมบัติและราคารายชั้น")
 summary_df = pd.DataFrame(layers_data)
-summary_df.columns = ["ลำดับชั้น", "วัสดุ", "ความหนาจริง (µm)", "OTR ชั้นนี้", "WVTR ชั้นนี้", "ต้นทุนชั้นนี้ (บาท/m²)"]
+summary_df.columns = ["ลำดับชั้น", "วัสดุ", "ความหนาจริง (µm)", "OTR ชั้นนี้", "WVTR ชั้นนี้"]
 st.dataframe(summary_df.style.format({
     "ความหนาจริง (µm)": "{:.2f}",
     "OTR ชั้นนี้": "{:.4f}",

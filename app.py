@@ -71,7 +71,7 @@ DATABASE = [
         "ref_otr": 4000,
         "ref_wvtr": 7.5,
         "density": 0.92,
-        "price_per_kg": 46.5,
+        "price_per_kg": 55,
         "unit_otr": "cc/m2.day",
         "unit_wvtr": "g/m2.day"
         },
@@ -82,7 +82,7 @@ DATABASE = [
         "ref_otr": 2000,
         "ref_wvtr": 4.0,
         "density": 0.92,
-        "price_per_kg": 92.5,
+        "price_per_kg": 55,
         "unit_otr": "cc/m2.day",
         "unit_wvtr": "g/m2.day"
     },

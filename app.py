@@ -254,4 +254,4 @@ st.dataframe(table_df.style.format({
     "WVTR ชั้นนี้ (g/m².day)": "{:.4f}"
 }))
 
-st.info("💡 หมายเหตุสูตรคำนวณ: Total Material Cost = [ค่าฟิล์มรวมที่แปลงหน่วยเป็น บาท/m² ถูกต้องแล้ว + ค่ากาวรวม] และบุกเพิ่ม Variable Cost 15% ที่ยอดสุทธิ")riable Cost 15% ให้ที่กรอบด้านบน")
+st.info("💡 หมายเหตุสูตรคำนวณ: Total Material Cost = [ค่าฟิล์มรวมที่แปลงหน่วยเป็น บาท/m² ถูกต้องแล้ว + ค่ากาวรวม] และบวกเพิ่ม Variable Cost 15% ที่ยอดสุทธิ")

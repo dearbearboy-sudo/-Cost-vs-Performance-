@@ -13,8 +13,8 @@ DATABASE = [
         "material_category": "Metalized film",
         "film_name": "mPE(XE)-MDO",
         "ref_thickness_microns": 25.0,
-        "ref_otr": 0.25,
-        "ref_wvtr": 0.45,
+        "ref_otr": 0.27,
+        "ref_wvtr": 0.25,
         "density": 0.972,       # ความหนาแน่นเพื่อคำนวณน้ำหนัก
         "price_per_kg": 349.0,  # ราคา (บาท/กิโลกรัม)
         "unit_otr": "cc/m2.day",

@@ -55,7 +55,7 @@ DATABASE = [
     },
     {
       "material_category": "Non-metalized film (EVOH)",
-        "film_name": "EF-F",
+        "film_name": "F",
         "ref_thickness_microns": 12.0,
         "ref_otr": 0.60,
         "ref_wvtr": 86,
